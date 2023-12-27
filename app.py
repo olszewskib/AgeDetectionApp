@@ -1,34 +1,44 @@
 import tkinter as tk
 import ttkbootstrap as ttk
+import cv2 as cv
+from PIL import Image,ImageTk
+import face_recognition as fr
+import input_options_frame as iof
+
+def open_camera():
+    
+    cap = cv.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame_with_faces = fr.detect_faces(frame)
+        cv.imshow('Face Detection', frame_with_faces)
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+    cap.release()
+    cv.destroyAllWindows()
 
 def convert():
-    mile_input = entry_int.get()
-    km_output = mile_input * 1.61
-    output_string.set(km_output)
+    output_string.set(selected_input.get())
 
 # window
 window = ttk.Window(themename='journal')
 window.title('Age detection')
 window.geometry('1600x900')
 window.minsize(width='800', height='450')
+window.bind('<Escape>', lambda e: window.quit())
 
 # input options
-options_frame = ttk.Frame(master=window, borderwidth=10, relief=tk.GROOVE)
-options_frame_title_label = ttk.Label(master = options_frame, text = 'Input options', font = 'Calibri 24 bold').pack()
-camera_label = ttk.Label(master=options_frame, text='Camera', font='Calibri 24').pack(anchor='w')
-video_label = ttk.Label(master=options_frame, text='Video', font='Calibri 24').pack(anchor='w')
-photos_label = ttk.Label(master=options_frame, text='Photo', font='Calibri 24').pack(anchor='w')
-options_frame.pack()
+option_frame, selected_input = iof.get_options_frame(window)
+option_frame.pack()
 
 
 #input field
 input_frame = ttk.Frame(master = window)
-entry_int = tk.IntVar()
-entry = ttk.Entry(master = input_frame, textvariable=entry_int)
-button = ttk.Button(master = input_frame, text = 'Convert', command=convert)
-entry.pack(side='left', padx=10)
-button.pack(side='left')
-# input_frame.pack(pady=10)
+button = ttk.Button(master = input_frame, text = 'Run', command=convert)
+button.pack()
+input_frame.pack(pady=10)
 
 #output label
 output_string = tk.StringVar()

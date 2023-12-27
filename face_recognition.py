@@ -15,7 +15,7 @@ def choose_data_source():
         choice = input("Wybierz źródło danych (k - kamera, o - obraz, f - film, q - wyjście): ")
         if choice == 'k':
             # Źródło danych: kamera
-            cap = cv.VideoCapture(0)
+            cap = cv.VideoCapture(1)
             while True:
                 ret, frame = cap.read()
                 if not ret:
