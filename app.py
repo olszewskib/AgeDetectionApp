@@ -4,23 +4,7 @@ import cv2 as cv
 from PIL import Image,ImageTk
 import face_recognition as fr
 import input_options_frame as iof
-
-def open_camera():
-    
-    cap = cv.VideoCapture(0)
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame_with_faces = fr.detect_faces(frame)
-        cv.imshow('Face Detection', frame_with_faces)
-        if cv.waitKey(1) & 0xFF == ord('q'):
-            break
-    cap.release()
-    cv.destroyAllWindows()
-
-def convert():
-    output_string.set(selected_input.get())
+from input_options import InputOptions
 
 # window
 window = ttk.Window(themename='journal')
@@ -33,17 +17,48 @@ window.bind('<Escape>', lambda e: window.quit())
 option_frame, selected_input = iof.get_options_frame(window)
 option_frame.pack()
 
+# camera
+vid = cv.VideoCapture(1)
+width, height = 800, 450
+vid.set(cv.CAP_PROP_FRAME_WIDTH,width)
+vid.set(cv.CAP_PROP_FRAME_HEIGHT,height)
 
-#input field
-input_frame = ttk.Frame(master = window)
-button = ttk.Button(master = input_frame, text = 'Run', command=convert)
-button.pack()
-input_frame.pack(pady=10)
+label_widget = ttk.Label(window)
+label_widget.pack()
 
-#output label
-output_string = tk.StringVar()
-output_label = ttk.Label(master=window, text='Output', font='Calibri 24', textvariable=output_string)
-output_label.pack(pady=5)
+def open_camera():
+    
+    if(selected_input.get() != InputOptions.CAMERA.name):
+        label_widget.photo_image = None
+        return
+  
+    # Capture the video frame by frame 
+    _, frame = vid.read()
+    
+    frame = fr.detect_faces(frame)
+  
+    # Convert image from one color space to other 
+    opencv_image = cv.cvtColor(frame, cv.COLOR_BGR2RGBA) 
+  
+    # Capture the latest frame and transform to image 
+    captured_image = Image.fromarray(opencv_image) 
+  
+    # Convert captured image to photoimage 
+    photo_image = ImageTk.PhotoImage(image=captured_image) 
+  
+    # Displaying photoimage in the label 
+    label_widget.photo_image = photo_image 
+  
+    # Configure image in the label 
+    label_widget.configure(image=photo_image) 
+  
+    # Repeat the same process after every 10 mseconds 
+    label_widget.after(10, open_camera) 
+  
+  
+# Create a button to open the camera in GUI app 
+run_button = ttk.Button(window, text="Run", command=open_camera) 
+run_button.pack() 
 
 #run
 window.mainloop()
