@@ -67,6 +67,7 @@ def display_output(frame):
 
 def open_camera():
     if selected_input.get() != InputOptions.CAMERA.name:
+        processed_frames.clear()
         label_widget.photo_image = None
         return
 
@@ -75,6 +76,13 @@ def open_camera():
     processed_frames.append(frame)
     display_output(frame)
     label_widget.after(10, open_camera)
+
+
+def process_photo(file_path):
+    image = cv.imread(file_path)
+    frame = fr.detect_faces(image)
+    display_output(frame)
+    return frame
 
 
 def load_photos():
@@ -99,16 +107,37 @@ def load_photos():
     listbox.selection_set(1)
 
 
-def process_photo(file_path):
-    image = cv.imread(file_path)
-    frame = fr.detect_faces(image)
-    display_output(frame)
-    return frame
-
-
 def load_camera_input():
     # adding an entry to a listbox
     listbox.insert(1, CAMERA_VIDEO_NAME + ".mp4")
+
+    # adding corresponding file to files
+    tmp = []
+    for frame in processed_frames:
+        tmp.append(frame)
+    files.insert(1, tmp)
+
+    # clearting processed frames
+    processed_frames.clear()
+
+
+def load_video():
+    file_path = browse_files()
+
+    capture = cv.VideoCapture(file_path)
+    while True:
+        success, frame = capture.read()
+        if success:
+            processed_frame = fr.detect_faces(frame)
+            processed_frames.append(processed_frame)
+        else:
+            break
+
+    capture.release()
+
+    # adding an entry to a listbox
+    file_name = file_path.split("/")[-1]
+    listbox.insert(1, file_name)
 
     # adding corresponding file to files
     tmp = []
@@ -189,7 +218,7 @@ def run():
         save_button_description.set("save all")
         load_photos()
     elif arg == InputOptions.VIDEO.name:
-        print("video")
+        load_video()
 
 
 run_button = ttk.Button(option_frame, text="select", command=run).pack(pady=PADDING)
