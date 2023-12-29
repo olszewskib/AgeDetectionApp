@@ -8,18 +8,12 @@ import face_recognition as fr
 from tkinter import filedialog
 import input_options_frame as iof
 from input_options import InputOptions
+from file_system import *
 
 # Globals
 PADDING = 15
 processed_photos = []
 
-def browse_files():
-    filepath = filedialog.askopenfilename(initialdir='/', title='Select a file')
-    return filepath
-
-def browse_directories():
-    dirpath = filedialog.askdirectory(initialdir='/', title='Select directory')
-    return dirpath
 
 def save_files():
     path = browse_directories()
@@ -57,11 +51,6 @@ vid = cv.VideoCapture(1)
 width, height = 800, 450
 vid.set(cv.CAP_PROP_FRAME_WIDTH,width)
 vid.set(cv.CAP_PROP_FRAME_HEIGHT,height)
-
-def save_frame(frame, path, name):
-    opencv_image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-    image = Image.fromarray(opencv_image)
-    image.save(path + f'/{name}.jpg')
 
 def display_output(frame):
     
