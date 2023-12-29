@@ -16,22 +16,17 @@ def save_frame(frame, path, name):
     image = Image.fromarray(opencv_image)
     image.save(path + f'/{name}.jpg')
 
-def save_images(processed_frames):
-    path = browse_directories()
-    i = 0 #TODO fix file names
-    for processed_photo in processed_frames:
-        save_frame(processed_photo, path, f'test{i}')
-        i+=1
+def save_image(processed_frame, path, name):
+    image = processed_frame[0]
+    save_frame(image, path, name)
     
-def save_camera_input(processed_frames, filename):
-    path = browse_directories()
-
+def save_video(processed_frames, path, name):
     img_array = []
     for processed_frame in processed_frames:
         height, width, _ = processed_frame.shape
         size = (width,height)
         img_array.append(processed_frame)
-    out = cv.VideoWriter(path + f'/{filename}.mp4', cv.VideoWriter_fourcc(*'mp4v'), 30, size)
+    out = cv.VideoWriter(path + f'/{name}', cv.VideoWriter_fourcc(*'mp4v'), 30, size)
     
     for i in range(len(img_array)):
         out.write(img_array[i])

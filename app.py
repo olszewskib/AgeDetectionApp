@@ -124,11 +124,28 @@ def preview_file():
     label_widget.after(10,preview_file)
 
 def delete_selected():
+
     indices = listbox.curselection()
+    if len(indices) == 0 or indices[0] == 0: return
     
     for index in reversed(indices):
         listbox.delete(index)
         files.pop(index)
+    
+def save_selected():
+
+    indices = listbox.curselection()
+    if len(indices) == 0 or indices[0] == 0: return
+
+    path = browse_directories()
+    for index in reversed(indices):
+        file = files[index]
+        name = listbox.get(index)
+        if len(file) > 1:
+            save_video(file,path,name)
+        else:
+            save_image(file,path,name)
+        
     
 
 def on_listbox_select(e):
@@ -145,20 +162,17 @@ def on_listbox_select(e):
         preview_buffer.append(frame)
 
     preview_file()
-        
+
+  
 def save_files():
     arg = selected_input.get()
 
     if arg == InputOptions.CAMERA.name:
         selected_input.set(InputOptions.SAVING.name)
-        # save_camera_input(processed_frames, CAMERA_VIDEO_NAME)
         load_camera_input()
         selected_input.set(InputOptions.CAMERA.name)
-    elif arg == InputOptions.PHOTOS.name:
-        save_images(processed_frames)
-    elif arg == InputOptions.VIDEO.name:
-        print('saving video')
-
+    else:
+        save_selected()
 
 def run():
     arg = selected_input.get()
