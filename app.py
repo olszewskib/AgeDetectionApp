@@ -1,13 +1,13 @@
+import glob
+import cv2 as cv
 from tkinter import *
 from tkdocviewer import *
 import ttkbootstrap as ttk
-import cv2 as cv
 from PIL import Image,ImageTk
 import face_recognition as fr
+from tkinter import filedialog
 import input_options_frame as iof
 from input_options import InputOptions
-from tkinter import filedialog
-import glob
 
 # Globals
 PADDING = 15
@@ -20,6 +20,13 @@ def browse_files():
 def browse_directories():
     dirpath = filedialog.askdirectory(initialdir='/', title='Select directory')
     return dirpath
+
+def save_files():
+    path = browse_directories()
+    i = 0
+    for processed_photo in processed_photos:
+        save_frame(processed_photo, path, f'test{i}')
+        i+=1
 
 def on_resize(event):
     if(selected_input.get() == InputOptions.CAMERA.name):
@@ -51,12 +58,18 @@ width, height = 800, 450
 vid.set(cv.CAP_PROP_FRAME_WIDTH,width)
 vid.set(cv.CAP_PROP_FRAME_HEIGHT,height)
 
+def save_frame(frame, path, name):
+    opencv_image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+    image = Image.fromarray(opencv_image)
+    image.save(path + f'/{name}.jpg')
+
 def display_output(frame):
+    
     # Convert image from one color space to other 
     opencv_image = cv.cvtColor(frame, cv.COLOR_BGR2RGBA) 
   
     # Capture the latest frame and transform to image 
-    captured_image = Image.fromarray(opencv_image) 
+    captured_image = Image.fromarray(opencv_image)
   
     # Convert captured image to photoimage 
     photo_image = ImageTk.PhotoImage(image=captured_image) 
@@ -80,8 +93,11 @@ def open_camera():
   
 def read_photos():
     
+    # clearing previous files
     processed_photos.clear()
     files_listbox.delete(0, END)
+    
+    # reading photos
     dir_path = browse_directories()
     file_paths = glob.glob(dir_path + '/*.jpg')
 
@@ -90,8 +106,6 @@ def read_photos():
         processed_photos.insert(0,processed_photo)
         file_name = file_path.split('/')[-1]
         files_listbox.insert(0, file_name)
-    
-    return processed_photos
 
 def process_photo(file_path):
     
@@ -114,14 +128,14 @@ def run():
         print('video')
   
 
-run_button = ttk.Button(option_frame, text="Run", command=run) 
-run_button.pack(pady=PADDING) 
+run_button = ttk.Button(option_frame, text="select", command=run).pack(pady=PADDING) 
 
 files_title_label = ttk.Label(master = option_frame, text = 'Files', font = 'Calibri 24 bold').pack(anchor='w')
-files_listbox = Listbox(option_frame, height=200) # fix height with a constant value
+files_listbox = Listbox(option_frame)
 files_listbox.bind('<<ListboxSelect>>', lambda e: display_output(processed_photos[files_listbox.curselection()[0]]))
-    
-files_listbox.pack(pady=PADDING)
+files_listbox.pack(pady=PADDING, expand=True, fill='y')
+
+save_button = ttk.Button(option_frame, text='save all', command=save_files).pack(pady=PADDING)
 
 #run
-window.mainloop()
+window.mainloop(),
