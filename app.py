@@ -2,29 +2,22 @@ import glob
 import cv2 as cv
 from tkinter import *
 from tkdocviewer import *
+from file_system import *
 import ttkbootstrap as ttk
 from PIL import Image,ImageTk
 import face_recognition as fr
-from tkinter import filedialog
 import input_options_frame as iof
 from input_options import InputOptions
-from file_system import *
 
 # Globals
 PADDING = 15
-processed_photos = []
+CAMERA_VIDEO_NAME = 'camera'
+processed_frames = []
+preview_buffer = []
 
-
-def save_files():
-    path = browse_directories()
-    i = 0
-    for processed_photo in processed_photos:
-        save_frame(processed_photo, path, f'test{i}')
-        i+=1
-
-def on_resize(event):
-    if(selected_input.get() == InputOptions.CAMERA.name):
-        pass
+# listbox files
+files = []
+files.append([]) # sentinel
 
 # window
 window = ttk.Window(themename='journal')
@@ -32,7 +25,6 @@ window.title('Age detection')
 window.geometry('1600x900')
 window.minsize(width='800', height='450')
 window.bind('<Escape>', lambda e: window.quit())
-window.bind('<Configure>', on_resize)
 
 # input options
 option_frame, selected_input = iof.get_options_frame(window)
@@ -77,54 +69,122 @@ def open_camera():
   
     _, frame = vid.read()
     frame = fr.detect_faces(frame)
+    processed_frames.append(frame)
     display_output(frame)
     label_widget.after(10, open_camera) 
   
-def read_photos():
+def load_photos():
     
-    # clearing previous files
-    processed_photos.clear()
-    files_listbox.delete(0, END)
-    
-    # reading photos
+    # loading photos photos
     dir_path = browse_directories()
     file_paths = glob.glob(dir_path + '/*.jpg')
 
     for file_path in file_paths:
-        processed_photo = process_photo(file_path)
-        processed_photos.insert(0,processed_photo)
+        processed_frame = [process_photo(file_path)]
+        
+        # adding file to listbox
         file_name = file_path.split('/')[-1]
-        files_listbox.insert(0, file_name)
+        listbox.insert(1, file_name)
+        # adding corresponding file to files
+        files.insert(1,processed_frame)
+
+    # clearing processed frames
+    processed_frames.clear()
+    
+    # selecting most recent file
+    listbox.selection_clear(0,END)
+    listbox.selection_set(1)
 
 def process_photo(file_path):
     
     image = cv.imread(file_path)
-    if image is not None:
-        frame = fr.detect_faces(image)
-        display_output(frame)
-        return frame
-    else:
-        print("Not a valid image")
+    frame = fr.detect_faces(image)
+    display_output(frame)
+    return frame
     
+def load_camera_input():
+
+    # adding an entry to a listbox
+    listbox.insert(1,CAMERA_VIDEO_NAME + '.mp4')
+    
+    # adding corresponding file to files
+    tmp = []
+    for frame in processed_frames:
+        tmp.append(frame)
+    files.insert(1,tmp)
+    
+    # clearting processed frames
+    processed_frames.clear()
+
+def preview_file():
+
+    if len(preview_buffer) == 0: return
+    img = preview_buffer.pop(0)
+    display_output(img)
+    label_widget.after(10,preview_file)
+
+def delete_selected():
+    indices = listbox.curselection()
+    
+    for index in reversed(indices):
+        listbox.delete(index)
+        files.pop(index)
+    
+
+def on_listbox_select(e):
+
+    index = listbox.curselection()[0]
+    
+    if index == 0:
+        listbox.select_clear(0,END)
+        listbox.select_set(1,END)
+        return
+    
+    file_to_preview = files[index]
+    for frame in file_to_preview:
+        preview_buffer.append(frame)
+
+    preview_file()
+        
+def save_files():
+    arg = selected_input.get()
+
+    if arg == InputOptions.CAMERA.name:
+        selected_input.set(InputOptions.SAVING.name)
+        # save_camera_input(processed_frames, CAMERA_VIDEO_NAME)
+        load_camera_input()
+        selected_input.set(InputOptions.CAMERA.name)
+    elif arg == InputOptions.PHOTOS.name:
+        save_images(processed_frames)
+    elif arg == InputOptions.VIDEO.name:
+        print('saving video')
+
+
 def run():
     arg = selected_input.get()
     
     if(arg == InputOptions.CAMERA.name):
+        save_button_description.set('save')
         open_camera()
     elif(arg == InputOptions.PHOTOS.name):
-        read_photos()
+        save_button_description.set('save all')
+        load_photos()
     elif(arg == InputOptions.VIDEO.name):
         print('video')
   
-
 run_button = ttk.Button(option_frame, text="select", command=run).pack(pady=PADDING) 
 
 files_title_label = ttk.Label(master = option_frame, text = 'Files', font = 'Calibri 24 bold').pack(anchor='w')
-files_listbox = Listbox(option_frame)
-files_listbox.bind('<<ListboxSelect>>', lambda e: display_output(processed_photos[files_listbox.curselection()[0]]))
-files_listbox.pack(pady=PADDING, expand=True, fill='y')
+listbox = Listbox(option_frame)
+listbox.insert(0,'all')
+listbox.bind('<<ListboxSelect>>', on_listbox_select)
+listbox.pack(pady=PADDING, expand=True, fill='y')
 
-save_button = ttk.Button(option_frame, text='save all', command=save_files).pack(pady=PADDING)
+save_button_description = StringVar()
+save_button_description.set('save')
+save_button = ttk.Button(option_frame, textvariable=save_button_description, command=save_files).pack(side='left')
+
+delete_button = ttk.Button(option_frame, text="delete", command=delete_selected).pack(side='left', padx=PADDING)
 
 #run
 window.mainloop(),
