@@ -16,6 +16,8 @@ from input_options import InputOptions
 # Globals
 PADDING = 15
 CAMERA_VIDEO_NAME = "camera"
+WINDOW_WIDTH = 1600
+WINDOW_HEIGHT = 900
 processed_frames = []
 preview_buffer = []
 
@@ -23,34 +25,55 @@ preview_buffer = []
 files = []
 files.append([])  # sentinel
 
+# live feed from camera
 frame_queue = queue.Queue()
+
+
+def on_resize(e):
+    update_gui()
+
 
 # window
 window = ttk.Window(themename="journal")
 window.title("Age detection")
-window.geometry("1600x900")
+window.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
 window.minsize(width="800", height="450")
 window.bind("<Escape>", lambda e: window.quit())
-
-is_resizing = False
-
-
-def on_resize(e):
-    global is_resizing
-    is_resizing = True
-    update_gui()
-    is_resizing = False
-
-
 window.bind("<Configure>", on_resize)
 
 # input options
 option_frame, selected_input = iof.get_options_frame(window)
 option_frame.pack(side="left", padx=PADDING, pady=PADDING, fill="both")
 
-label_widget = ttk.Label(window)
+# Create a canvas and put it in a scrollbar
+v_scrollbar = ttk.Scrollbar(window, orient="vertical")
+v_scrollbar.pack(side="right", fill="y")
 
+h_scrollbar = ttk.Scrollbar(window, orient="horizontal")
+h_scrollbar.pack(side="bottom", fill="x")
+
+canvas = ttk.Canvas(
+    window, yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set
+)
+canvas.pack(side="left", fill="both", expand=True)
+
+v_scrollbar.config(command=canvas.yview)
+h_scrollbar.config(command=canvas.xview)
+
+# Create a frame inside the canvas and put the label in it
+frame = ttk.Frame(canvas)
+canvas.create_window((0, 0), window=frame, anchor="nw")
+
+label_widget = ttk.Label(frame)
 label_widget.pack(side="right", padx=PADDING, pady=PADDING, expand=True)
+
+
+# Update the scrollregion of the canvas when the size of the frame changes
+def on_frame_configure(event):
+    canvas.configure(scrollregion=canvas.bbox("all"))
+
+
+frame.bind("<Configure>", on_frame_configure)
 
 
 def start_video_capture():
@@ -61,28 +84,26 @@ def start_video_capture():
 
 def video_capture():
     vid = cv.VideoCapture(1)
-    width, height = 800, 450
+    width, height = WINDOW_WIDTH, WINDOW_HEIGHT
     vid.set(cv.CAP_PROP_FRAME_WIDTH, width)
     vid.set(cv.CAP_PROP_FRAME_HEIGHT, height)
 
-    while True:
+    while selected_input.get() == InputOptions.CAMERA.name:
         _, frame = vid.read()
         frame = fr.detect_faces(frame)
         processed_frames.append(frame)
+        label_widget.after(10, update_gui)
         frame_queue.put(frame)
-        if selected_input.get() != InputOptions.CAMERA.name:
-            break
 
     vid.release()
 
 
 def update_gui():
-    try:
-        frame = frame_queue.get_nowait()
-        display_output(frame)
-    except queue.Empty:
-        pass
-    window.after(10, update_gui)
+    if frame_queue.empty() or selected_input.get() != InputOptions.CAMERA.name:
+        return
+
+    frame = frame_queue.get_nowait()
+    display_output(frame)
 
 
 def display_output(frame):
@@ -122,6 +143,9 @@ def load_photos():
     # loading photos photos
     dir_path = browse_directories()
     file_paths = glob.glob(dir_path + "/*.jpg")
+    file_paths += glob.glob(dir_path + "/*.jpeg")
+    file_paths += glob.glob(dir_path + "/*.png")
+    file_paths += glob.glob(dir_path + "/*.bmp")
 
     for file_path in file_paths:
         processed_frame = [process_photo(file_path)]
@@ -142,7 +166,7 @@ def load_photos():
 
 def load_camera_input():
     # adding an entry to a listbox
-    listbox.insert(1, CAMERA_VIDEO_NAME + ".mp4")
+    listbox.insert(1, CAMERA_VIDEO_NAME + str(len(files)) + ".mp4")
 
     # adding corresponding file to files
     tmp = []
@@ -157,6 +181,7 @@ def load_camera_input():
 def load_video():
     file_path = browse_files()
 
+    processed_frames.clear()
     capture = cv.VideoCapture(file_path)
     while True:
         success, frame = capture.read()
@@ -191,6 +216,14 @@ def preview_file():
 
 
 def delete_selected():
+    global camera_on
+    if camera_on:
+        selected_input.set(InputOptions.SAVING.name)
+        processed_frames.clear()
+        delete_button_description.set("delete")
+        camera_on = False
+        return
+
     indices = listbox.curselection()
     if len(indices) == 0 or indices[0] == 0:
         return
@@ -241,16 +274,26 @@ def save_files():
         save_selected()
 
 
+camera_on = False
+
+
 def run():
+    global camera_on
     arg = selected_input.get()
 
     if arg == InputOptions.CAMERA.name:
+        camera_on = True
+        delete_button_description.set("stop")
         save_button_description.set("save")
         open_camera()
     elif arg == InputOptions.PHOTOS.name:
+        camera_on = False
+        delete_button_description.set("delete")
         save_button_description.set("save all")
         load_photos()
     elif arg == InputOptions.VIDEO.name:
+        camera_on = False
+        delete_button_description.set("delete")
         load_video()
 
 
@@ -270,9 +313,20 @@ save_button = ttk.Button(
     option_frame, textvariable=save_button_description, command=save_files
 ).pack(side="left")
 
-delete_button = ttk.Button(option_frame, text="delete", command=delete_selected).pack(
-    side="left", padx=PADDING
-)
+delete_button_description = StringVar()
+delete_button_description.set("delete")
+delete_button = ttk.Button(
+    option_frame, textvariable=delete_button_description, command=delete_selected
+).pack(side="left", padx=PADDING)
+
+# centering window
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+
+x = (screen_width / 2) - (WINDOW_WIDTH / 2)
+y = (screen_height / 2) - (WINDOW_HEIGHT / 2)
+
+window.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{int(x)}+{int(y)}")
 
 # run
 window.mainloop(),
