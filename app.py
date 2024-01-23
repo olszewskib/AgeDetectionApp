@@ -1,4 +1,6 @@
 import glob
+import queue
+import threading
 from tkinter import *
 
 import cv2 as cv
@@ -21,12 +23,26 @@ preview_buffer = []
 files = []
 files.append([])  # sentinel
 
+frame_queue = queue.Queue()
+
 # window
 window = ttk.Window(themename="journal")
 window.title("Age detection")
 window.geometry("1600x900")
 window.minsize(width="800", height="450")
 window.bind("<Escape>", lambda e: window.quit())
+
+is_resizing = False
+
+
+def on_resize(e):
+    global is_resizing
+    is_resizing = True
+    update_gui()
+    is_resizing = False
+
+
+window.bind("<Configure>", on_resize)
 
 # input options
 option_frame, selected_input = iof.get_options_frame(window)
@@ -36,16 +52,37 @@ label_widget = ttk.Label(window)
 
 label_widget.pack(side="right", padx=PADDING, pady=PADDING, expand=True)
 
-# v = DocViewer(window)
-# v.pack(side="top", expand=1, fill="both")
-# path = browse_files()
-# v.display_file(path)
 
-# camera
-vid = cv.VideoCapture(0)
-width, height = 800, 450
-vid.set(cv.CAP_PROP_FRAME_WIDTH, width)
-vid.set(cv.CAP_PROP_FRAME_HEIGHT, height)
+def start_video_capture():
+    capture_thread = threading.Thread(target=video_capture)
+    capture_thread.start()
+    update_gui()
+
+
+def video_capture():
+    vid = cv.VideoCapture(1)
+    width, height = 800, 450
+    vid.set(cv.CAP_PROP_FRAME_WIDTH, width)
+    vid.set(cv.CAP_PROP_FRAME_HEIGHT, height)
+
+    while True:
+        _, frame = vid.read()
+        frame = fr.detect_faces(frame)
+        processed_frames.append(frame)
+        frame_queue.put(frame)
+        if selected_input.get() != InputOptions.CAMERA.name:
+            break
+
+    vid.release()
+
+
+def update_gui():
+    try:
+        frame = frame_queue.get_nowait()
+        display_output(frame)
+    except queue.Empty:
+        pass
+    window.after(10, update_gui)
 
 
 def display_output(frame):
@@ -71,11 +108,7 @@ def open_camera():
         label_widget.photo_image = None
         return
 
-    _, frame = vid.read()
-    frame = fr.detect_faces(frame)
-    processed_frames.append(frame)
-    display_output(frame)
-    label_widget.after(10, open_camera)
+    start_video_capture()
 
 
 def process_photo(file_path):
