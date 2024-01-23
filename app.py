@@ -42,7 +42,7 @@ label_widget.pack(side="right", padx=PADDING, pady=PADDING, expand=True)
 # v.display_file(path)
 
 # camera
-vid = cv.VideoCapture(1)
+vid = cv.VideoCapture(0)
 width, height = 800, 450
 vid.set(cv.CAP_PROP_FRAME_WIDTH, width)
 vid.set(cv.CAP_PROP_FRAME_HEIGHT, height)
