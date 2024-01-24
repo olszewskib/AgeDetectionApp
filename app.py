@@ -83,7 +83,7 @@ def start_video_capture():
 
 
 def video_capture():
-    vid = cv.VideoCapture(1)
+    vid = cv.VideoCapture(0)
     width, height = WINDOW_WIDTH, WINDOW_HEIGHT
     vid.set(cv.CAP_PROP_FRAME_WIDTH, width)
     vid.set(cv.CAP_PROP_FRAME_HEIGHT, height)

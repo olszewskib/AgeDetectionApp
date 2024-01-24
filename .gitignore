@@ -1,2 +1,6 @@
 __pycache__/
 resources
+dist
+build
+user_manual.pdf
+app.spec

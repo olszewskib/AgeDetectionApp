@@ -1,12 +1,21 @@
+import os
+import sys
+
 import cv2 as cv
 import numpy as np
 from keras.models import load_model
 
-classifier_path = (
-    "venv/lib/python3.11/site-packages/cv2/data/haarcascade_frontalface_default.xml"
+if getattr(sys, "frozen", False):
+    application_path = sys._MEIPASS
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
+model_path = os.path.join(application_path, "resources", "model.h5")
+classifier_path = os.path.join(
+    application_path, "resources", "haarcascade_frontalface_default.xml"
 )
 
-best_model = load_model("resources/model.h5")
+best_model = load_model(model_path)
 
 
 def detect_faces(image):
